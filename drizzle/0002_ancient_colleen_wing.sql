@@ -1,0 +1,1 @@
+ALTER TABLE `practice_sessions` ADD `scenario_definition_json` text;

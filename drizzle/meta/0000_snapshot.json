@@ -1,0 +1,596 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "33838d5d-66d4-4160-9de9-f0041acd69be",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "branches": {
+      "name": "branches",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_branch_id": {
+          "name": "parent_branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fork_turn_id": {
+          "name": "fork_turn_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reaction_profile": {
+          "name": "reaction_profile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "resistance_move_order": {
+          "name": "resistance_move_order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "branches_session_idx": {
+          "name": "branches_session_idx",
+          "columns": [
+            "session_id"
+          ],
+          "isUnique": false
+        },
+        "branches_parent_idx": {
+          "name": "branches_parent_idx",
+          "columns": [
+            "parent_branch_id"
+          ],
+          "isUnique": false
+        },
+        "branches_fork_turn_idx": {
+          "name": "branches_fork_turn_idx",
+          "columns": [
+            "fork_turn_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "branches_session_id_practice_sessions_id_fk": {
+          "name": "branches_session_id_practice_sessions_id_fk",
+          "tableFrom": "branches",
+          "tableTo": "practice_sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "branches_parent_branch_id_branches_id_fk": {
+          "name": "branches_parent_branch_id_branches_id_fk",
+          "tableFrom": "branches",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "parent_branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        },
+        "branches_fork_turn_id_turns_id_fk": {
+          "name": "branches_fork_turn_id_turns_id_fk",
+          "tableFrom": "branches",
+          "tableTo": "turns",
+          "columnsFrom": [
+            "fork_turn_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "branches_lineage_check": {
+          "name": "branches_lineage_check",
+          "value": "(\"branches\".\"kind\" = 'original' AND \"branches\".\"parent_branch_id\" IS NULL AND \"branches\".\"fork_turn_id\" IS NULL)\n        OR (\"branches\".\"kind\" = 'rewind' AND \"branches\".\"parent_branch_id\" IS NOT NULL AND \"branches\".\"fork_turn_id\" IS NOT NULL)\n        OR (\"branches\".\"kind\" = 'pressure-test' AND \"branches\".\"parent_branch_id\" IS NOT NULL AND \"branches\".\"fork_turn_id\" IS NULL)"
+        },
+        "branches_reaction_profile_check": {
+          "name": "branches_reaction_profile_check",
+          "value": "length(trim(\"branches\".\"reaction_profile\")) > 0"
+        }
+      }
+    },
+    "debriefs": {
+      "name": "debriefs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "debrief_json": {
+          "name": "debrief_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model_version": {
+          "name": "model_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "prompt_version": {
+          "name": "prompt_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "debriefs_branch_unique": {
+          "name": "debriefs_branch_unique",
+          "columns": [
+            "branch_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "debriefs_branch_id_branches_id_fk": {
+          "name": "debriefs_branch_id_branches_id_fk",
+          "tableFrom": "debriefs",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "practice_sessions": {
+      "name": "practice_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scenario_id": {
+          "name": "scenario_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scenario_version": {
+          "name": "scenario_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "privacy_mode": {
+          "name": "privacy_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active_branch_id": {
+          "name": "active_branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "practice_sessions_scenario_idx": {
+          "name": "practice_sessions_scenario_idx",
+          "columns": [
+            "scenario_id",
+            "scenario_version"
+          ],
+          "isUnique": false
+        },
+        "practice_sessions_status_idx": {
+          "name": "practice_sessions_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "practice_sessions_active_branch_id_branches_id_fk": {
+          "name": "practice_sessions_active_branch_id_branches_id_fk",
+          "tableFrom": "practice_sessions",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "active_branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "practice_sessions_scenario_version_check": {
+          "name": "practice_sessions_scenario_version_check",
+          "value": "\"practice_sessions\".\"scenario_version\" > 0"
+        }
+      }
+    },
+    "readiness_ratings": {
+      "name": "readiness_ratings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "readiness_ratings_session_stage_unique": {
+          "name": "readiness_ratings_session_stage_unique",
+          "columns": [
+            "session_id",
+            "stage"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "readiness_ratings_session_id_practice_sessions_id_fk": {
+          "name": "readiness_ratings_session_id_practice_sessions_id_fk",
+          "tableFrom": "readiness_ratings",
+          "tableTo": "practice_sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "readiness_ratings_value_check": {
+          "name": "readiness_ratings_value_check",
+          "value": "\"readiness_ratings\".\"rating\" BETWEEN 1 AND 5"
+        }
+      }
+    },
+    "state_snapshots": {
+      "name": "state_snapshots",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "before_turn_id": {
+          "name": "before_turn_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state_json": {
+          "name": "state_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "state_snapshots_before_turn_unique": {
+          "name": "state_snapshots_before_turn_unique",
+          "columns": [
+            "before_turn_id"
+          ],
+          "isUnique": true
+        },
+        "state_snapshots_branch_idx": {
+          "name": "state_snapshots_branch_idx",
+          "columns": [
+            "branch_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "state_snapshots_branch_id_branches_id_fk": {
+          "name": "state_snapshots_branch_id_branches_id_fk",
+          "tableFrom": "state_snapshots",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "state_snapshots_before_turn_id_turns_id_fk": {
+          "name": "state_snapshots_before_turn_id_turns_id_fk",
+          "tableFrom": "state_snapshots",
+          "tableTo": "turns",
+          "columnsFrom": [
+            "before_turn_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "turns": {
+      "name": "turns",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "speaker": {
+          "name": "speaker",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "audio_path": {
+          "name": "audio_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "turns_branch_sequence_unique": {
+          "name": "turns_branch_sequence_unique",
+          "columns": [
+            "branch_id",
+            "sequence"
+          ],
+          "isUnique": true
+        },
+        "turns_branch_speaker_idx": {
+          "name": "turns_branch_speaker_idx",
+          "columns": [
+            "branch_id",
+            "speaker"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "turns_branch_id_branches_id_fk": {
+          "name": "turns_branch_id_branches_id_fk",
+          "tableFrom": "turns",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "turns_sequence_check": {
+          "name": "turns_sequence_check",
+          "value": "\"turns\".\"sequence\" > 0"
+        },
+        "turns_text_check": {
+          "name": "turns_text_check",
+          "value": "length(trim(\"turns\".\"text\")) > 0"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

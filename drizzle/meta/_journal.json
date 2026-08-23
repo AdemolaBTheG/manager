@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787167358875,
+      "tag": "0000_loving_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787290370865,
+      "tag": "0001_calm_steve_rogers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787381118830,
+      "tag": "0002_ancient_colleen_wing",
+      "breakpoints": true
+    }
+  ]
+}
