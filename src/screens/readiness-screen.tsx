@@ -87,7 +87,6 @@ function StartPracticeButton({
 
 export function ReadinessScreen({ onStartPractice }: ReadinessScreenProps) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
   const [selectedValue, setSelectedValue] = useState<ReadinessValue | null>(
     null,
   );
@@ -124,12 +123,7 @@ export function ReadinessScreen({ onStartPractice }: ReadinessScreenProps) {
   };
 
   return (
-    <View
-      style={[
-        styles.screen,
-        { backgroundColor: theme.background, paddingTop: insets.top },
-      ]}
-    >
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View
         style={[
           styles.content,

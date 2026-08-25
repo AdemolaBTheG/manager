@@ -16,6 +16,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
 import { ReadinessFallbackScreen } from "@/screens/readiness-screen";
 import { SessionDetailScreen } from "@/screens/session-detail-screen";
+import { posthog } from "@/services/analytics/posthog";
 import {
   loadCompleteSessionDetailPreview,
   loadSessionDetail,
@@ -51,11 +52,12 @@ export default function SessionDetailRoute() {
     mutationKey: ["sessions", "delete", sessionId],
     mutationFn: () => sessionRepository.deleteSession(sessionId),
     onSuccess: async () => {
+      posthog?.capture("session_deleted");
       queryClient.removeQueries({
         queryKey: sessionQueryKeys.detail(sessionId),
       });
       await queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all });
-      router.dismissTo("/");
+      router.dismissTo("/(app)");
     },
     onError: () => {
       Alert.alert(
@@ -362,7 +364,7 @@ function openSessionAction(
       return;
     case "scenario":
       router.push({
-        pathname: "/scenarios/[scenarioId]",
+        pathname: "/(app)/(scenarios)/[scenarioId]",
         params: { scenarioId: session.scenarioId },
       });
       return;

@@ -1,7 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
 import type { NativeStackHeaderItem } from "@react-navigation/native-stack";
+import { useMutation } from "@tanstack/react-query";
 import { BlurTargetView, BlurView } from "expo-blur";
-import * as Haptics from "expo-haptics";
 import type { File } from "expo-file-system";
 import { Link, Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -21,10 +20,8 @@ import Animated, {
   FadeInUp,
   FadeOut,
   interpolate,
-  interpolateColor,
   ReduceMotion,
   runOnJS,
-  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
@@ -33,13 +30,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useConversationTransition } from "@/components/conversation-transition-provider";
+import { DebriefTransitionField } from "@/components/debrief-atmosphere";
+import { LiveSpeechCaption } from "@/components/live-speech-caption";
 import {
   ReactiveInitialsAvatar,
   RehearsalAvatarPhase,
   type RehearsalAvatarPhaseValue,
 } from "@/components/reactive-initials-avatar";
-import { useConversationTransition } from "@/components/conversation-transition-provider";
-import { DebriefTransitionField } from "@/components/debrief-atmosphere";
 import { ThemedText } from "@/components/themed-text";
 import {
   FontSize,
@@ -53,13 +51,16 @@ import type { ScenarioBrief } from "@/data/scenarios";
 import type { Debrief, DebriefMoment } from "@/domain/coaching";
 import type { ScenarioDefinition } from "@/domain/scenario";
 import type { PracticeSession } from "@/domain/session";
-import type { SpeechCaptionSnapshot } from "@/domain/speech-caption";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useDebriefTransitionHaptics } from "@/hooks/use-debrief-transition-haptics";
+import { useSemanticHaptics } from "@/hooks/use-semantic-haptics";
 import {
   useRehearsalActor,
   type RehearsalActorState,
 } from "@/hooks/use-rehearsal-actor";
 import {
   useRehearsalSpeechPlayback,
+  type PlaybackFinishReason,
   type RehearsalSpeechPlaybackState,
 } from "@/hooks/use-rehearsal-speech-playback";
 import {
@@ -67,15 +68,15 @@ import {
   type CapturedVoiceTurn,
   type VoiceCaptureState,
 } from "@/hooks/use-rehearsal-voice-capture";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
 import { DebriefScreen } from "@/screens/debrief-screen";
+import { posthog } from "@/services/analytics/posthog";
+import type { CounterpartLineByTurnId } from "@/services/query/debrief-context";
 import {
   createAndLoadRewind,
   loadOrCreateInitialDebrief,
   prepareSessionPlan,
 } from "@/services/query/debrief-flow";
-import type { CounterpartLineByTurnId } from "@/services/query/debrief-context";
 import {
   useDebriefMutation,
   useTranscriptionMutation,
@@ -131,6 +132,8 @@ const COMPLETION_ENTERING = FadeInUp.duration(260)
   .reduceMotion(ReduceMotion.System);
 const COMPLETION_REVEAL_DELAY = 360;
 const SCENE_EASING = Easing.bezier(0.32, 0, 0.16, 1);
+const DEBRIEF_ENTER_DURATION = 900;
+const DEBRIEF_REWIND_DURATION = 680;
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 type DebriefSceneState =
@@ -161,6 +164,22 @@ export function RehearsalScreen({
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + (process.env.EXPO_OS === "ios" ? 44 : 56);
   const reduceMotion = useReducedMotion();
+  const {
+    playEnter: playDebriefEnterHaptic,
+    playRewind: playDebriefRewindHaptic,
+    playSettle: playDebriefSettleHaptic,
+  } = useDebriefTransitionHaptics({
+    enterDurationMs: DEBRIEF_ENTER_DURATION,
+    reduceMotion,
+    rewindDurationMs: DEBRIEF_REWIND_DURATION,
+  });
+  const {
+    playError,
+    playReady,
+    playRecordStart,
+    playRecordStop,
+    playSuccess,
+  } = useSemanticHaptics();
   const { isTransitioning: isRouteTransitioning, startConversationTransition } =
     useConversationTransition();
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
@@ -202,6 +221,7 @@ export function RehearsalScreen({
   );
   const controlScale = useSharedValue(1);
   const didStartOpeningSpeechRef = useRef(false);
+  const lastHapticErrorRef = useRef<string | null>(null);
   const speechActivityTargetRef = useRef(0);
   const listenerActivityTargetRef = useRef(0);
   const {
@@ -240,11 +260,14 @@ export function RehearsalScreen({
     [counterpartActivity, reduceMotion],
   );
 
-  const handleSpeechFinish = useCallback(() => {
+  const handleSpeechFinish = useCallback((reason: PlaybackFinishReason) => {
     phase.set(RehearsalAvatarPhase.idle);
     speechActivityTargetRef.current = 0;
     counterpartActivity.set(withTiming(0, SPEECH_LEVEL_RELEASE));
-  }, [counterpartActivity, phase]);
+    if (reason === "done") {
+      playReady();
+    }
+  }, [counterpartActivity, phase, playReady]);
 
   const speechPlayback = useRehearsalSpeechPlayback({
     counterpart: {
@@ -348,6 +371,27 @@ export function RehearsalScreen({
     onTranscript: handleTranscript,
     transcribe: transcribeManagerTurn,
   });
+
+  useEffect(() => {
+    const nextError =
+      actorErrorMessage ??
+      voiceCapture.errorMessage ??
+      speechPlayback.errorMessage;
+
+    if (!nextError) {
+      lastHapticErrorRef.current = null;
+      return;
+    }
+    if (lastHapticErrorRef.current === nextError) return;
+
+    lastHapticErrorRef.current = nextError;
+    playError();
+  }, [
+    actorErrorMessage,
+    playError,
+    speechPlayback.errorMessage,
+    voiceCapture.errorMessage,
+  ]);
 
   const initials = scenario.counterpart.name
     .split(" ")
@@ -541,11 +585,8 @@ export function RehearsalScreen({
       return;
     }
 
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-
     if (voiceCapture.captureState === "listening") {
+      playRecordStop();
       phase.set(RehearsalAvatarPhase.thinking);
       counterpartActivity.set(withTiming(0.16, STATE_TRANSITION));
       await voiceCapture.stopCapture();
@@ -570,6 +611,7 @@ export function RehearsalScreen({
     const didStart = await voiceCapture.startCapture();
 
     if (didStart) {
+      playRecordStart();
       phase.set(RehearsalAvatarPhase.listening);
       counterpartActivity.set(withTiming(0.14, STATE_TRANSITION));
     }
@@ -597,7 +639,8 @@ export function RehearsalScreen({
       !activeBranchId ||
       !isConversationComplete ||
       speechPlayback.isBusy ||
-      isSceneVisible
+      isSceneVisible ||
+      completionReadyBranchId === activeBranchId
     ) {
       return;
     }
@@ -605,9 +648,7 @@ export function RehearsalScreen({
     const timeout = setTimeout(
       () => {
         setCompletionReadyBranchId(activeBranchId);
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.selectionAsync();
-        }
+        playSuccess();
       },
       reduceMotion ? 120 : COMPLETION_REVEAL_DELAY,
     );
@@ -616,6 +657,8 @@ export function RehearsalScreen({
   }, [
     isConversationComplete,
     isSceneVisible,
+    completionReadyBranchId,
+    playSuccess,
     reduceMotion,
     session.activeBranchId,
     speechPlayback.isBusy,
@@ -663,9 +706,6 @@ export function RehearsalScreen({
 
       if (!retrying) {
         sceneProgress.set(0);
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
         await nextFrame();
       }
 
@@ -677,9 +717,12 @@ export function RehearsalScreen({
             generateDebrief,
             sessionId: session.id,
           });
+      if (!retrying) {
+        playDebriefEnterHaptic();
+      }
       const enterPromise = retrying
         ? Promise.resolve()
-        : animateSceneTo(1, 900);
+        : animateSceneTo(1, DEBRIEF_ENTER_DURATION);
 
       try {
         const result = await loadPromise;
@@ -697,9 +740,7 @@ export function RehearsalScreen({
         await nextFrame();
         await enterPromise;
         setIsDebriefInteractive(true);
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.selectionAsync();
-        }
+        playDebriefSettleHaptic();
       } catch (error) {
         setDebriefScene({
           kind: "error",
@@ -721,6 +762,8 @@ export function RehearsalScreen({
       debriefScene,
       generateDebrief,
       phase,
+      playDebriefEnterHaptic,
+      playDebriefSettleHaptic,
       scenarioDefinition,
       sceneProgress,
       session,
@@ -737,16 +780,19 @@ export function RehearsalScreen({
     setIsDebriefInteractive(false);
     setSceneDirection("into-rehearsal");
     await nextFrame();
-    await animateSceneTo(0, 680);
+    playDebriefRewindHaptic();
+    await animateSceneTo(0, DEBRIEF_REWIND_DURATION);
     await nextFrame();
     await nextFrame();
     setDebriefScene(null);
     setIsRestoringRewind(false);
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.selectionAsync();
-    }
+    playDebriefSettleHaptic();
     sceneRunningRef.current = false;
-  }, [animateSceneTo]);
+  }, [
+    animateSceneTo,
+    playDebriefRewindHaptic,
+    playDebriefSettleHaptic,
+  ]);
   const rewindFromDebrief = useCallback(
     async (moment: DebriefMoment) => {
       if (debriefScene?.kind !== "ready" || isRestoringRewind) {
@@ -868,7 +914,13 @@ export function RehearsalScreen({
 
     try {
       const didEnd = await endPractice();
-      if (!didEnd) {
+      if (didEnd) {
+        posthog?.capture("practice_session_completed", {
+          category: scenarioDefinition.category,
+          privacy_mode: session.privacyMode ?? "standard",
+          session_mode: mode,
+        });
+      } else {
         Alert.alert(
           "Keep practicing",
           `Finish the current exchange before ending practice.`,
@@ -880,7 +932,15 @@ export function RehearsalScreen({
         "Your rehearsal is still saved. Please try again.",
       );
     }
-  }, [counterpartActivity, endPractice, phase, userVoiceLevel]);
+  }, [
+    counterpartActivity,
+    endPractice,
+    mode,
+    phase,
+    scenarioDefinition.category,
+    session.privacyMode,
+    userVoiceLevel,
+  ]);
   const confirmEndPractice = useCallback(() => {
     if (!canEndPractice || isBusy || isConversationComplete) {
       return;
@@ -1157,6 +1217,7 @@ export function RehearsalScreen({
                                 speechPlayback.captionHighlightProgress
                               }
                               inactiveColor={theme.textSecondary}
+                              style={styles.captionText}
                             />
                           </Animated.View>
                         </View>
@@ -1513,85 +1574,6 @@ type VoiceCopy = {
   readonly message: string | null;
   readonly controlLabel: string | null;
 };
-
-function LiveSpeechCaption({
-  activeColor,
-  activeWordPosition,
-  caption,
-  highlightProgress,
-  inactiveColor,
-}: {
-  activeColor: string;
-  activeWordPosition: SharedValue<number>;
-  caption: SpeechCaptionSnapshot;
-  highlightProgress: SharedValue<number>;
-  inactiveColor: string;
-}) {
-  const phrase = caption.words.join(" ");
-
-  return (
-    <ThemedText
-      accessibilityLabel={phrase}
-      numberOfLines={2}
-      style={[styles.captionText, { color: inactiveColor }]}
-    >
-      {caption.words.map((word, index) => (
-        <LiveSpeechCaptionWord
-          activeColor={activeColor}
-          activeWordPosition={activeWordPosition}
-          highlightProgress={highlightProgress}
-          inactiveColor={inactiveColor}
-          key={`${caption.phraseIndex}-${index}-${word}`}
-          prefix={index > 0 ? " " : ""}
-          word={word}
-          wordPosition={caption.wordOffset + index}
-        />
-      ))}
-    </ThemedText>
-  );
-}
-
-function LiveSpeechCaptionWord({
-  activeColor,
-  activeWordPosition,
-  highlightProgress,
-  inactiveColor,
-  prefix,
-  word,
-  wordPosition,
-}: {
-  activeColor: string;
-  activeWordPosition: SharedValue<number>;
-  highlightProgress: SharedValue<number>;
-  inactiveColor: string;
-  prefix: string;
-  word: string;
-  wordPosition: number;
-}) {
-  const colorStyle = useAnimatedStyle(() => {
-    const distanceFromActiveWord = Math.abs(
-      activeWordPosition.get() - wordPosition,
-    );
-    const colorProgress =
-      Math.max(0, 1 - distanceFromActiveWord) * highlightProgress.get();
-
-    return {
-      color: interpolateColor(
-        colorProgress,
-        [0, 1],
-        [inactiveColor, activeColor],
-        "LAB",
-      ),
-    };
-  }, [activeColor, inactiveColor, wordPosition]);
-
-  return (
-    <Animated.Text style={colorStyle}>
-      {prefix}
-      {word}
-    </Animated.Text>
-  );
-}
 
 function getVoiceCopy({
   actorErrorMessage,

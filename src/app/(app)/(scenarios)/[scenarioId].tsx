@@ -10,6 +10,7 @@ import {
 } from '@/data/scenarios';
 import { createOpeningSimulationState } from '@/domain/simulation-state';
 import { ScenarioBriefingScreen } from '@/screens/scenario-briefing-screen';
+import { posthog } from '@/services/analytics/posthog';
 import { sessionRepository } from '@/services/storage';
 
 export default function ScenarioBriefingRoute() {
@@ -42,6 +43,11 @@ export default function ScenarioBriefingRoute() {
       });
 
       await sessionRepository.transitionSession(session.id, 'confirmed');
+      posthog?.capture('practice_session_started', {
+        category: scenario.category,
+        scenario_id: scenario.id,
+        privacy_mode: 'standard',
+      });
 
       router.push({
         pathname: '/session/[sessionId]/readiness',

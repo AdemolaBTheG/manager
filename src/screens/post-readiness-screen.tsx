@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ReadinessSelector } from "@/components/readiness-selector";
@@ -8,6 +8,7 @@ import { ThemedText } from "@/components/themed-text";
 import { FontSize, Sizing, Spacing } from "@/constants/theme";
 import type { ReadinessValue } from "@/domain/session";
 import { useTheme } from "@/hooks/use-theme";
+import { PressableScale } from "pressto";
 
 type PostReadinessScreenProps = {
   onSubmit: (rating: ReadinessValue) => Promise<void>;
@@ -80,7 +81,7 @@ export function PostReadinessScreen({ onSubmit }: PostReadinessScreenProps) {
           </ThemedText>
         ) : null}
 
-        <Pressable
+        <PressableScale
           accessibilityHint="Saves your readiness after rehearsal"
           accessibilityRole="button"
           accessibilityState={{
@@ -89,10 +90,10 @@ export function PostReadinessScreen({ onSubmit }: PostReadinessScreenProps) {
           }}
           disabled={isSubmitting || selectedRating === null}
           onPress={handleSubmit}
-          style={({ pressed }) => [
+          style={[
             styles.primaryButton,
             {
-              backgroundColor: pressed ? theme.primaryPressed : theme.primary,
+              backgroundColor: theme.primary,
               opacity: isSubmitting || selectedRating === null ? 0.42 : 1,
             },
           ]}
@@ -109,7 +110,7 @@ export function PostReadinessScreen({ onSubmit }: PostReadinessScreenProps) {
             size={Sizing.icon.medium}
             tintColor={theme.onPrimary}
           />
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );
@@ -120,10 +121,9 @@ export function PostReadinessStatusScreen({
   title,
 }: PostReadinessStatusScreenProps) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+    <View style={[styles.screen]}>
       <View
         style={[
           styles.statusContent,

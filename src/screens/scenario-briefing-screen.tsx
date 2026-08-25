@@ -48,8 +48,7 @@ export function ScenarioBriefingScreen({
         <View style={styles.content}>
           <Link.AppleZoomTarget>
             <View collapsable={false} style={styles.counterpart}>
-              <View
-                style={[styles.avatar, { backgroundColor: categoryColor }]}>
+              <View style={[styles.avatar, { backgroundColor: categoryColor }]}>
                 <ThemedText style={styles.avatarText} themeColor="onPrimary">
                   {scenario.counterpart.name
                     .split(" ")
@@ -63,7 +62,8 @@ export function ScenarioBriefingScreen({
                 </ThemedText>
                 <ThemedText
                   selectable
-                  style={[styles.relationship, { color: categoryColor }]}>
+                  style={[styles.relationship, { color: categoryColor }]}
+                >
                   {scenario.counterpart.relationship}
                 </ThemedText>
               </View>
@@ -96,7 +96,7 @@ export function ScenarioBriefingScreen({
                           web: "circle",
                         }}
                         size={Spacing.two}
-                        tintColor={theme.primary}
+                        tintColor={theme.text}
                       />
                     </View>
                     <ThemedText selectable style={styles.goalText}>

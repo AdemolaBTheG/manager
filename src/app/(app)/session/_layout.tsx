@@ -1,10 +1,12 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Stack } from "expo-router/stack";
 
-export default function ScenariosStackLayout() {
+export default function SessionModalLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const liquidGlassAvailable = isLiquidGlassAvailable();
 
   return (
     <Stack
@@ -16,9 +18,18 @@ export default function ScenariosStackLayout() {
       }}
     >
       <Stack.Screen
-        name="[scenarioId]"
-        options={{ title: "Briefing" }}
+        name="index"
+        options={{
+          title: "Sessions",
+          headerTransparent: liquidGlassAvailable,
+          headerStyle: {
+            backgroundColor: liquidGlassAvailable
+              ? "transparent"
+              : colors.background,
+          },
+        }}
       />
+      <Stack.Screen name="[sessionId]" options={{ headerShown: false }} />
     </Stack>
   );
 }

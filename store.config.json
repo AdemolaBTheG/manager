@@ -1,0 +1,60 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0",
+    "release": {
+      "automaticRelease": true
+    },
+    "info": {
+      "en-US": {
+        "title": "The Talk Ahead",
+        "subtitle": "Communication Skills Practice",
+        "description": "The Talk Ahead helps new managers practice the workplace conversations that are hardest to say out loud.\n\nBring a real conversation or choose a guided scenario. Rehearse it by voice with a realistic AI colleague, meet believable resistance, and get a concise debrief grounded in what you actually said.\n\nPRACTICE BEFORE IT COUNTS\n• Rehearse difficult feedback, boundaries, underperformance, and conflict\n• Prepare for conversations with former peers and direct reports\n• Practice speaking clearly without becoming harsh\n• Build confidence through private, repeatable rehearsal\n\nLEARN FROM THE MOMENTS THAT MATTER\n• See where you clarified—or softened—the standard\n• Rewind an important moment and try a different approach\n• Pressure-test the same situation against a different reaction\n• Leave with a concise Before You Go In plan\n\nBUILT FOR REAL CONVERSATIONS\nThe Talk Ahead does not hand you a perfect script. It helps you remain clear, curious, and accountable when the conversation gets uncomfortable.\n\nYour sessions are private, and recorded audio is not retained after transcription.\n\nPrivacy Policy:\nhttps://ajar-prune-18d.notion.site/The-Talk-Ahead-Privacy-Policy-3c799fdd69fc809f9c97ed2cac47ecb9?pvs=74\n\nTerms of Service:\nhttps://ajar-prune-18d.notion.site/The-Talk-Ahead-Terms-Of-Service-3c799fdd69fc8064a394f34afbe8831a?pvs=73\n\nPractice the conversation before the conversation.",
+        "keywords": [
+          "difficult",
+          "hard",
+          "conversation",
+          "manager",
+          "training",
+          "leadership",
+          "new",
+          "feedback",
+          "conflict",
+          "coach",
+          "workplace"
+        ],
+        "promoText": "Practice the conversation before the conversation with private, realistic voice rehearsal for difficult moments at work.",
+        "privacyPolicyUrl": "https://ajar-prune-18d.notion.site/The-Talk-Ahead-Privacy-Policy-3c799fdd69fc809f9c97ed2cac47ecb9?pvs=74"
+      }
+    },
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
+    }
+  }
+}

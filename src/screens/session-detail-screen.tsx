@@ -108,7 +108,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
                 </ThemedText>
                 <ThemedText
                   selectable
-                  style={[styles.relationship, { color: categoryColor }]}
+                  style={styles.relationship}
                 >
                   {scenario.presentation.relationshipLabel}
                 </ThemedText>
@@ -146,7 +146,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
             </View>
 
             {data.beforeRating ? (
-              <Section title="READINESS" titleColor={categoryColor}>
+              <Section title="READINESS">
                 <ReadinessComparison
                   after={data.afterRating}
                   before={data.beforeRating}
@@ -158,7 +158,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
             ) : null}
 
             {outcome ? (
-              <Section title="OUTCOME" titleColor={categoryColor}>
+              <Section title="OUTCOME">
                 <ThemedText selectable style={styles.outcome}>
                   {outcome}
                 </ThemedText>
@@ -166,7 +166,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
             ) : null}
 
             {ask ? (
-              <Section title="BEFORE YOU GO IN" titleColor={categoryColor}>
+              <Section title="BEFORE YOU GO IN">
                 <PressableScale
                   accessibilityHint={
                     onOpenPlan ? "Opens your full preparation plan" : undefined
@@ -191,7 +191,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
                       <View accessible={false} style={styles.planLink}>
                         <ThemedText
                           accessible={false}
-                          style={[styles.planLinkText, { color: theme.primary }]}
+                          style={styles.planLinkText}
                         >
                           View full plan
                         </ThemedText>
@@ -203,7 +203,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
                             web: "arrow_forward",
                           }}
                           size={Sizing.icon.small}
-                          tintColor={theme.primary}
+                          tintColor={theme.text}
                         />
                       </View>
                     ) : null}
@@ -212,7 +212,7 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
               </Section>
             ) : null}
 
-            <Section title="PRACTICE ATTEMPTS" titleColor={categoryColor}>
+            <Section title="PRACTICE ATTEMPTS">
               <AttemptsSurface
                 accessibilityLabel={formatAttemptAccessibilityLabel(
                   data.attempts,
@@ -268,12 +268,12 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
                 </ThemedText>
                 <SymbolView
                   name={{
-                    ios: "text.magnifyingglass",
-                    android: "rate_review",
-                    web: "rate_review",
+                    ios: "chevron.forward",
+                    android: "chevron_right",
+                    web: "chevron_right",
                   }}
-                  size={Sizing.icon.medium}
-                  tintColor={theme.text}
+                  size={Sizing.icon.small}
+                  tintColor={theme.textSecondary}
                 />
               </PressableScale>
             ) : null}
@@ -345,18 +345,13 @@ export const SessionDetailScreen = forwardRef<View, SessionDetailScreenProps>(
 function Section({
   children,
   title,
-  titleColor,
 }: {
   readonly children: React.ReactNode;
   readonly title: string;
-  readonly titleColor: string;
 }) {
   return (
     <View style={styles.section}>
-      <ThemedText
-        selectable
-        style={[styles.sectionLabel, { color: titleColor }]}
-      >
+      <ThemedText selectable style={styles.sectionLabel}>
         {title}
       </ThemedText>
       {children}
@@ -456,7 +451,7 @@ function ReadinessSegmentRow({
           accessible={false}
           style={[
             styles.readinessChange,
-            { color: activeColor, opacity: changeLabel ? 1 : 0 },
+            { opacity: changeLabel ? 1 : 0 },
           ]}
         >
           {changeLabel ?? "+0"}
@@ -500,7 +495,7 @@ function Attempt({
       <SymbolView
         accessible={false}
         name={icon}
-        size={Sizing.icon.small}
+        size={Sizing.icon.medium}
         tintColor={iconColor}
         weight="semibold"
       />
@@ -781,7 +776,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: FontSize.bodyLarge,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   unavailable: {
     fontSize: FontSize.small,

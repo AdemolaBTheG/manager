@@ -20,7 +20,6 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 export const MANAGER_PRO_ENTITLEMENT = 'manager_pro';
 
 export const REVENUECAT_PRODUCT_IDS = {
-  lifetime: 'lifetime',
   yearly: 'yearly',
   monthly: 'monthly',
 } as const;
@@ -77,16 +76,35 @@ export function RevenueCatProvider({ children }: PropsWithChildren) {
         Purchases.addCustomerInfoUpdateListener(listener);
         isListening = true;
 
-        const [info, offerings] = await Promise.all([
-          Purchases.getCustomerInfo(),
-          Purchases.getOfferings(),
-        ]);
+        const customerInfoTask = Purchases.getCustomerInfo()
+          .then((info) => {
+            if (isMounted) {
+              setCustomerInfo(info);
+            }
+          })
+          .catch((caughtError) => {
+            if (isMounted) {
+              setError(toRevenueCatErrorMessage(caughtError));
+            }
+          })
+          .finally(() => {
+            if (isMounted) {
+              setIsLoading(false);
+            }
+          });
+        const offeringsTask = Purchases.getOfferings()
+          .then((offerings) => {
+            if (isMounted) {
+              setCurrentOffering(offerings.current);
+            }
+          })
+          .catch((caughtError) => {
+            if (isMounted) {
+              setError(toRevenueCatErrorMessage(caughtError));
+            }
+          });
 
-        if (isMounted) {
-          setCustomerInfo(info);
-          setCurrentOffering(offerings.current);
-          setError(null);
-        }
+        await Promise.allSettled([customerInfoTask, offeringsTask]);
       } catch (caughtError) {
         if (isMounted) {
           setError(toRevenueCatErrorMessage(caughtError));
@@ -309,14 +327,13 @@ export function findRevenueCatPackage(
 function getRevenueCatApiKey() {
   const platformKey =
     process.env.EXPO_OS === 'ios'
-      ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+      ? process.env.EXPO_PUBLIC_RC_APPLE_API_KEY
       : process.env.EXPO_OS === 'android'
         ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
         : process.env.EXPO_PUBLIC_REVENUECAT_WEB_API_KEY;
-  const apiKey =
-    platformKey ??
-    process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ??
-    'test_lUWKKzTyWNQjyecJqkZfHfenPha';
+  const apiKey = (
+    platformKey ?? process.env.EXPO_PUBLIC_REVENUECAT_API_KEY
+  )?.trim();
 
   if (!apiKey) {
     throw new Error('RevenueCat API key is not configured.');

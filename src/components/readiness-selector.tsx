@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
@@ -13,6 +12,7 @@ import Animated, {
 import { ReadinessSelectionLabel } from "@/components/readiness-selection-label";
 import { FontSize, Sizing, Spacing } from "@/constants/theme";
 import type { ReadinessValue } from "@/domain/session";
+import { useSemanticHaptics } from "@/hooks/use-semantic-haptics";
 import { useTheme } from "@/hooks/use-theme";
 
 export const READINESS_OPTIONS: readonly {
@@ -43,6 +43,7 @@ export function ReadinessSelector({
   onChange,
   value,
 }: ReadinessSelectorProps) {
+  const { playSelection } = useSemanticHaptics();
   const optionOneProgress = useSharedValue(value === 1 ? 1 : 0);
   const optionTwoProgress = useSharedValue(value === 2 ? 1 : 0);
   const optionThreeProgress = useSharedValue(value === 3 ? 1 : 0);
@@ -60,7 +61,7 @@ export function ReadinessSelector({
   );
 
   const handleSelect = (nextValue: ReadinessValue) => {
-    if (disabled) {
+    if (disabled || nextValue === value) {
       return;
     }
 
@@ -71,9 +72,7 @@ export function ReadinessSelector({
     }
 
     onChange(nextValue);
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.selectionAsync();
-    }
+    playSelection();
   };
 
   return (

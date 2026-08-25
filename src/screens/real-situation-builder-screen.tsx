@@ -42,6 +42,7 @@ import {
   type PracticeCategory,
   type RelationshipType,
 } from "@/domain/scenario";
+import { useSemanticHaptics } from "@/hooks/use-semantic-haptics";
 import { useTheme } from "@/hooks/use-theme";
 
 export type BuilderStep = 0 | 1 | 2 | 3;
@@ -102,6 +103,7 @@ export function RealSituationBuilderScreen({
 }: RealSituationBuilderScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { playReady } = useSemanticHaptics();
   const [step, setStep] = useState<BuilderStep>(0);
   const progress = useSharedValue(0);
   const [conversationType, setConversationType] =
@@ -207,6 +209,7 @@ export function RealSituationBuilderScreen({
       try {
         const result = await onNormalize(input);
         setNormalized(result);
+        playReady();
         moveToStep(3);
       } catch {
         // The route supplies a specific request error below the action.
@@ -788,11 +791,14 @@ function ChoiceGroup<T extends string>({
   value: T | null;
 }) {
   const theme = useTheme();
+  const { playSelection } = useSemanticHaptics();
   const selectionProgress = useSharedValue<number[]>(
     options.map((option) => (option.value === value ? 1 : 0)),
   );
 
   const handleChange = (index: number, nextValue: T) => {
+    if (nextValue === value) return;
+
     selectionProgress.value = withTiming(
       options.map((_, optionIndex) => (optionIndex === index ? 1 : 0)),
       {
@@ -802,6 +808,7 @@ function ChoiceGroup<T extends string>({
       },
     );
     onChange(nextValue);
+    playSelection();
   };
 
   return (

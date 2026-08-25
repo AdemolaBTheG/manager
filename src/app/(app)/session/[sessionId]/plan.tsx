@@ -64,7 +64,7 @@ export default function SessionPlanRoute() {
         afterRating={planQuery.data.afterRating}
         beforeRating={planQuery.data.beforeRating}
         evidenceAnchors={planQuery.data.evidenceAnchors}
-        onDone={() => router.dismissTo("/")}
+        onDone={() => router.dismissTo("/(app)")}
         onRateReadiness={() =>
           router.push({
             pathname: "/session/[sessionId]/post-readiness",

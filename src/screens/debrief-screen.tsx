@@ -17,21 +17,26 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { DebriefAtmosphere } from "@/components/debrief-atmosphere";
+import { FoundationProgressRing } from "@/components/foundation-progress-ring";
 import { ThemedText } from "@/components/themed-text";
 import { FontSize, Sizing, Spacing } from "@/constants/theme";
 import type {
   CoachingApproachStyle,
   Debrief,
+  DebriefFoundation,
   DebriefMoment,
   FoundationKey,
   FoundationStatus,
 } from "@/domain/coaching";
+import { useSemanticHaptics } from "@/hooks/use-semantic-haptics";
 import type { CounterpartLineByTurnId } from "@/services/query/debrief-context";
 
 type DebriefScreenProps = {
   accentColor: string;
   counterpartLineByTurnId: CounterpartLineByTurnId;
   counterpartName: string;
+  continueHint?: string;
+  continueLabel?: string;
   continueError: string | null;
   debrief: Debrief;
   embedded?: boolean;
@@ -39,7 +44,16 @@ type DebriefScreenProps = {
   isRewinding: boolean;
   onContinue: (() => void) | null;
   onRewind: ((moment: DebriefMoment) => void) | null;
+  retryComparison?: DebriefRetryComparison | null;
   rewindError: string | null;
+};
+
+export type DebriefRetryComparison = {
+  readonly originalFoundations: readonly DebriefFoundation[];
+  readonly originalManagerTurn: string;
+  readonly replacementFoundations: readonly DebriefFoundation[];
+  readonly replacementManagerTurn: string;
+  readonly whatChanged: string;
 };
 
 const TEXT = "rgba(255, 255, 255, 0.96)";
@@ -89,6 +103,8 @@ export function DebriefScreen({
   accentColor,
   counterpartLineByTurnId,
   counterpartName,
+  continueHint = "Skips rewind and opens your concise preparation plan",
+  continueLabel = "Continue to my plan",
   continueError,
   debrief,
   embedded = false,
@@ -96,8 +112,10 @@ export function DebriefScreen({
   isRewinding,
   onContinue,
   onRewind,
+  retryComparison = null,
   rewindError,
 }: DebriefScreenProps) {
+  const { playSelection } = useSemanticHaptics();
   const { fontScale, width } = useWindowDimensions();
   const rewindMoment =
     debrief.moments.find((moment) => moment.rewindable) ?? debrief.moments[0];
@@ -165,94 +183,110 @@ export function DebriefScreen({
                 selectable
                 style={[styles.featuredLabel, { color: accentColor }]}
               >
-                MOMENT TO RETRY
+                {retryComparison ? "WHAT CHANGED" : "MOMENT TO RETRY"}
               </ThemedText>
 
               <Animated.View
                 layout={LAYOUT_TRANSITION}
                 style={styles.featuredMoment}
               >
-                <ConversationExchange
-                  accentColor={accentColor}
-                  counterpartFirstName={counterpartFirstName}
-                  counterpartLine={counterpartLineByTurnId[rewindMoment.turnId]}
-                  managerQuote={rewindMoment.quote}
-                />
+                {retryComparison ? (
+                  <RetryComparison
+                    accentColor={accentColor}
+                    comparison={retryComparison}
+                  />
+                ) : (
+                  <>
+                    <ConversationExchange
+                      accentColor={accentColor}
+                      counterpartFirstName={counterpartFirstName}
+                      counterpartLine={
+                        counterpartLineByTurnId[rewindMoment.turnId]
+                      }
+                      managerQuote={rewindMoment.quote}
+                    />
 
-                <View style={styles.coachingCopy}>
-                  <ThemedText
-                    selectable
-                    style={[styles.observation, styles.whiteText]}
-                  >
-                    {rewindMoment.observation}
-                  </ThemedText>
-                  <ThemedText selectable style={styles.consequence}>
-                    {rewindMoment.consequence}
-                  </ThemedText>
-                </View>
-
-                {rewindMoment.approaches.length > 0 ? (
-                  <Animated.View
-                    layout={LAYOUT_TRANSITION}
-                    style={styles.approaches}
-                  >
-                    <ThemedText selectable style={styles.subsectionLabel}>
-                      APPROACH TO TRY
-                    </ThemedText>
-                    <View style={styles.approachChoices}>
-                      {rewindMoment.approaches.map((approach) => {
-                        const isSelected =
-                          approach.style === selectedApproachStyle;
-
-                        return (
-                          <PressableScale
-                            accessibilityHint="Reveals this coaching principle"
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: isSelected }}
-                            key={approach.style}
-                            onPress={() =>
-                              setSelectedApproachStyle(
-                                isSelected ? null : approach.style,
-                              )
-                            }
-                            style={[
-                              styles.approachChoice,
-                              isSelected && {
-                                backgroundColor: accentColor,
-                              },
-                            ]}
-                          >
-                            <ThemedText
-                              style={[
-                                styles.approachChoiceText,
-                                isSelected && styles.approachChoiceTextSelected,
-                              ]}
-                            >
-                              {capitalize(approach.style)}
-                            </ThemedText>
-                          </PressableScale>
-                        );
-                      })}
+                    <View style={styles.coachingCopy}>
+                      <ThemedText
+                        selectable
+                        style={[styles.observation, styles.whiteText]}
+                      >
+                        {rewindMoment.observation}
+                      </ThemedText>
+                      <ThemedText selectable style={styles.consequence}>
+                        {rewindMoment.consequence}
+                      </ThemedText>
                     </View>
 
-                    {selectedApproach ? (
+                    {rewindMoment.approaches.length > 0 ? (
                       <Animated.View
-                        entering={DISCLOSURE_ENTERING}
-                        exiting={DISCLOSURE_EXITING}
-                        key={selectedApproach.style}
                         layout={LAYOUT_TRANSITION}
+                        style={styles.approaches}
                       >
-                        <ThemedText selectable style={styles.approachPrinciple}>
-                          {selectedApproach.principle}
+                        <ThemedText selectable style={styles.subsectionLabel}>
+                          APPROACH TO TRY
                         </ThemedText>
+                        <View style={styles.approachChoices}>
+                          {rewindMoment.approaches.map((approach) => {
+                            const isSelected =
+                              approach.style === selectedApproachStyle;
+
+                            return (
+                              <PressableScale
+                                accessibilityHint="Reveals this coaching principle"
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: isSelected }}
+                                key={approach.style}
+                                onPress={() => {
+                                  setSelectedApproachStyle(
+                                    isSelected ? null : approach.style,
+                                  );
+                                  playSelection();
+                                }}
+                                style={[
+                                  styles.approachChoice,
+                                  isSelected && {
+                                    backgroundColor: accentColor,
+                                  },
+                                ]}
+                              >
+                                <ThemedText
+                                  style={[
+                                    styles.approachChoiceText,
+                                    isSelected &&
+                                      styles.approachChoiceTextSelected,
+                                  ]}
+                                >
+                                  {capitalize(approach.style)}
+                                </ThemedText>
+                              </PressableScale>
+                            );
+                          })}
+                        </View>
+
+                        {selectedApproach ? (
+                          <Animated.View
+                            entering={DISCLOSURE_ENTERING}
+                            exiting={DISCLOSURE_EXITING}
+                            key={selectedApproach.style}
+                            layout={LAYOUT_TRANSITION}
+                          >
+                            <ThemedText
+                              selectable
+                              style={styles.approachPrinciple}
+                            >
+                              {selectedApproach.principle}
+                            </ThemedText>
+                          </Animated.View>
+                        ) : null}
                       </Animated.View>
                     ) : null}
-                  </Animated.View>
-                ) : null}
+                  </>
+                )}
 
                 {onRewind || onContinue ? (
                   <View style={styles.rewindGroup}>
-                    {onRewind ? (
+                    {onRewind && !retryComparison ? (
                       <PressableScale
                         accessibilityHint="Restores the conversation immediately before this response"
                         accessibilityLabel="Rewind this moment"
@@ -269,7 +303,9 @@ export function DebriefScreen({
                         ]}
                       >
                         <ThemedText style={styles.rewindButtonText}>
-                          {isRewinding ? "Restoring moment…" : "Rewind this moment"}
+                          {isRewinding
+                            ? "Restoring moment…"
+                            : "Rewind this moment"}
                         </ThemedText>
                         <SymbolView
                           name={{
@@ -295,7 +331,7 @@ export function DebriefScreen({
 
                     {onContinue ? (
                       <PressableScale
-                        accessibilityHint="Skips rewind and opens your concise preparation plan"
+                        accessibilityHint={continueHint}
                         accessibilityRole="button"
                         accessibilityState={{
                           busy: isContinuing,
@@ -311,7 +347,7 @@ export function DebriefScreen({
                         <ThemedText style={styles.continueButtonText}>
                           {isContinuing
                             ? "Preparing your plan…"
-                            : "Continue to my plan"}
+                            : continueLabel}
                         </ThemedText>
                         <SymbolView
                           name={{
@@ -526,6 +562,60 @@ function ConversationExchange({
   );
 }
 
+function RetryComparison({
+  accentColor,
+  comparison,
+}: {
+  accentColor: string;
+  comparison: DebriefRetryComparison;
+}) {
+  return (
+    <View style={styles.retryComparison}>
+      <FoundationProgressRing
+        accentColor={accentColor}
+        current={comparison.replacementFoundations}
+        previous={comparison.originalFoundations}
+      />
+
+      <View style={styles.retryTurn}>
+        <ThemedText selectable style={styles.retryTurnLabel}>
+          YOU · BEFORE
+        </ThemedText>
+        <ThemedText
+          selectable
+          style={[styles.retryTurnText, styles.secondaryText]}
+        >
+          {comparison.originalManagerTurn}
+        </ThemedText>
+      </View>
+
+      <View style={[styles.retryTurn, { backgroundColor: accentColor }]}>
+        <ThemedText
+          selectable
+          style={[styles.retryTurnLabel, styles.retryTurnLabelCurrent]}
+        >
+          YOU · THIS TIME
+        </ThemedText>
+        <ThemedText selectable style={styles.retryTurnTextCurrent}>
+          {comparison.replacementManagerTurn}
+        </ThemedText>
+      </View>
+
+      <View style={styles.retryDifference}>
+        <ThemedText
+          selectable
+          style={[styles.subsectionLabel, { color: accentColor }]}
+        >
+          THE DIFFERENCE
+        </ThemedText>
+        <ThemedText selectable style={[styles.observation, styles.whiteText]}>
+          {comparison.whatChanged}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 function SupportingMomentGroup({
   accentColor,
   counterpartFirstName,
@@ -664,7 +754,6 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: FontSize.label,
     fontWeight: "700",
-    letterSpacing: 1.4,
   },
   outcome: {
     fontSize: FontSize.headingLarge,
@@ -677,7 +766,6 @@ const styles = StyleSheet.create({
   featuredLabel: {
     fontSize: FontSize.label,
     fontWeight: "700",
-    letterSpacing: 1.2,
   },
   featuredMoment: {
     backgroundColor: SURFACE,
@@ -733,6 +821,40 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: "600",
   },
+  retryComparison: {
+    gap: Spacing.two,
+  },
+  retryTurn: {
+    backgroundColor: SURFACE_SECONDARY,
+    borderCurve: "continuous",
+    borderRadius: Sizing.radius.medium,
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  retryTurnLabel: {
+    color: TEXT_SECONDARY,
+    fontSize: FontSize.labelSmall,
+    fontWeight: "700",
+  },
+  retryTurnLabelCurrent: {
+    color: BUTTON_TEXT,
+  },
+  retryTurnText: {
+    fontSize: FontSize.body,
+    fontWeight: "600",
+  },
+  retryTurnTextCurrent: {
+    color: BUTTON_TEXT,
+    fontSize: FontSize.body,
+    fontWeight: "700",
+  },
+  retryDifference: {
+    borderTopColor: HAIRLINE,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.one,
+    paddingTop: Spacing.three,
+  },
   coachingCopy: {
     gap: Spacing.one,
   },
@@ -751,7 +873,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontSize: FontSize.labelSmall,
     fontWeight: "700",
-    letterSpacing: 1,
   },
   approachChoices: {
     flexDirection: "row",

@@ -5,7 +5,8 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "ios-simulator": {
       "extends": "development",
@@ -14,8 +15,19 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_PRIVACY_URL": "https://ajar-prune-18d.notion.site/The-Talk-Ahead-Privacy-Policy-3c799fdd69fc809f9c97ed2cac47ecb9?pvs=74",
+        "EXPO_PUBLIC_TERMS_URL": "https://ajar-prune-18d.notion.site/The-Talk-Ahead-Terms-Of-Service-3c799fdd69fc8064a394f34afbe8831a?pvs=73"
+      }
     },
-    "production": {}
+    "production": {
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_PRIVACY_URL": "https://ajar-prune-18d.notion.site/The-Talk-Ahead-Privacy-Policy-3c799fdd69fc809f9c97ed2cac47ecb9?pvs=74",
+        "EXPO_PUBLIC_TERMS_URL": "https://ajar-prune-18d.notion.site/The-Talk-Ahead-Terms-Of-Service-3c799fdd69fc8064a394f34afbe8831a?pvs=73"
+      }
+    }
   }
 }

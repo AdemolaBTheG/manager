@@ -1,36 +1,35 @@
-import { useMemo, useState } from 'react';
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
-} from 'react-native';
-import { PAYWALL_RESULT } from 'react-native-purchases-ui';
+} from "react-native";
 
-import { ThemedText } from '@/components/themed-text';
-import { FontSize, MaxContentWidth, Sizing, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { ThemedText } from "@/components/themed-text";
+import { FontSize, MaxContentWidth, Sizing, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 import {
   MANAGER_PRO_ENTITLEMENT,
   REVENUECAT_PRODUCT_IDS,
   hasEntitlement,
   useRevenueCat,
-} from '@/providers/revenuecat-provider';
+} from "@/providers/revenuecat-provider";
 
 const PRODUCT_ORDER = [
   REVENUECAT_PRODUCT_IDS.yearly,
   REVENUECAT_PRODUCT_IDS.monthly,
-  REVENUECAT_PRODUCT_IDS.lifetime,
 ];
 
 const PRODUCT_LABELS: Record<string, string> = {
-  [REVENUECAT_PRODUCT_IDS.yearly]: 'Yearly',
-  [REVENUECAT_PRODUCT_IDS.monthly]: 'Monthly',
-  [REVENUECAT_PRODUCT_IDS.lifetime]: 'Lifetime',
+  [REVENUECAT_PRODUCT_IDS.yearly]: "Yearly",
+  [REVENUECAT_PRODUCT_IDS.monthly]: "Monthly",
 };
 
 export function SubscriptionScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const {
     customerInfo,
@@ -39,7 +38,6 @@ export function SubscriptionScreen() {
     hasManagerPro,
     isLoading,
     presentCustomerCenter,
-    presentPaywall,
     purchaseProduct,
     refresh,
     restore,
@@ -76,7 +74,8 @@ export function SubscriptionScreen() {
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: theme.background }}
-      contentContainerStyle={styles.scrollContent}>
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.content}>
         <View style={styles.intro}>
           <ThemedText selectable style={styles.eyebrow} themeColor="primary">
@@ -85,7 +84,11 @@ export function SubscriptionScreen() {
           <ThemedText selectable style={styles.title}>
             Practice without limits
           </ThemedText>
-          <ThemedText selectable style={styles.subtitle} themeColor="textSecondary">
+          <ThemedText
+            selectable
+            style={styles.subtitle}
+            themeColor="textSecondary"
+          >
             Choose a plan, restore an earlier purchase, or manage an active
             subscription.
           </ThemedText>
@@ -98,17 +101,18 @@ export function SubscriptionScreen() {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.border,
             },
-          ]}>
+          ]}
+        >
           <View style={styles.statusCopy}>
             <ThemedText selectable style={styles.statusTitle}>
-              {hasManagerPro ? 'Manager Pro is active' : 'Free access'}
+              {hasManagerPro ? "Manager Pro is active" : "Free access"}
             </ThemedText>
-            <ThemedText selectable type="small" themeColor="textSecondary">
+            <ThemedText selectable themeColor="textSecondary">
               {hasManagerPro
                 ? activeEntitlement?.expirationDate
                   ? `Renews or expires ${formatDate(activeEntitlement.expirationDate)}`
-                  : 'Lifetime access'
-                : 'Upgrade to unlock all Pro features.'}
+                  : "Pro access is active"
+                : "Upgrade to unlock all Pro features."}
             </ThemedText>
           </View>
           {isLoading ? <ActivityIndicator color={theme.primary} /> : null}
@@ -119,55 +123,50 @@ export function SubscriptionScreen() {
             accessibilityRole="button"
             disabled={busyAction !== null || isLoading}
             onPress={() =>
-              void runAction('paywall', async () => {
-                const result = await presentPaywall();
-                if (
-                  result === PAYWALL_RESULT.PURCHASED ||
-                  result === PAYWALL_RESULT.RESTORED
-                ) {
-                  setNotice('Manager Pro is ready.');
-                }
+              router.push({
+                pathname: "/(paywalls)/manager-pro",
+                params: { source: "subscription" },
               })
             }
             style={({ pressed }) => [
               styles.primaryButton,
               {
-                backgroundColor: pressed
-                  ? theme.primaryPressed
-                  : theme.primary,
+                backgroundColor: pressed ? theme.primaryPressed : theme.primary,
                 opacity: busyAction !== null || isLoading ? 0.55 : 1,
               },
-            ]}>
-            {busyAction === 'paywall' ? (
-              <ActivityIndicator color={theme.onPrimary} />
-            ) : (
-              <ThemedText style={styles.primaryButtonText} themeColor="onPrimary">
-                View plans
-              </ThemedText>
-            )}
+            ]}
+          >
+            <ThemedText
+              style={styles.primaryButtonText}
+              themeColor="onPrimary"
+            >
+              View plans
+            </ThemedText>
           </Pressable>
         ) : (
           <Pressable
             accessibilityRole="button"
             disabled={busyAction !== null}
             onPress={() =>
-              void runAction('customer-center', async () => {
+              void runAction("customer-center", async () => {
                 await presentCustomerCenter();
               })
             }
             style={({ pressed }) => [
               styles.primaryButton,
               {
-                backgroundColor: pressed
-                  ? theme.primaryPressed
-                  : theme.primary,
+                backgroundColor: pressed ? theme.primaryPressed : theme.primary,
                 opacity: busyAction !== null ? 0.55 : 1,
               },
-            ]}>
-            {busyAction === 'customer-center' ? (
+            ]}
+          >
+            {busyAction === "customer-center" ? (
               <ActivityIndicator color={theme.onPrimary} />
             ) : (
-              <ThemedText style={styles.primaryButtonText} themeColor="onPrimary">
+              <ThemedText
+                style={styles.primaryButtonText}
+                themeColor="onPrimary"
+              >
                 Manage subscription
               </ThemedText>
             )}
@@ -187,12 +186,14 @@ export function SubscriptionScreen() {
                   key={item.identifier}
                   onPress={() =>
                     void runAction(item.product.identifier, async () => {
-                      const info = await purchaseProduct(item.product.identifier);
+                      const info = await purchaseProduct(
+                        item.product.identifier,
+                      );
                       if (
                         info &&
                         hasEntitlement(info, MANAGER_PRO_ENTITLEMENT)
                       ) {
-                        setNotice('Purchase complete. Manager Pro is active.');
+                        setNotice("Purchase complete. Manager Pro is active.");
                       }
                     })
                   }
@@ -205,20 +206,25 @@ export function SubscriptionScreen() {
                       borderColor: theme.border,
                       opacity: busyAction !== null ? 0.55 : 1,
                     },
-                  ]}>
+                  ]}
+                >
                   <View style={styles.planCopy}>
                     <ThemedText selectable style={styles.planTitle}>
                       {PRODUCT_LABELS[item.product.identifier] ??
                         item.product.title}
                     </ThemedText>
-                    <ThemedText selectable type="small" themeColor="textSecondary">
+                    <ThemedText selectable themeColor="textSecondary">
                       {getProductCadence(item.product.identifier)}
                     </ThemedText>
                   </View>
                   {busyAction === item.product.identifier ? (
                     <ActivityIndicator color={theme.primary} />
                   ) : (
-                    <ThemedText selectable style={styles.price} themeColor="primary">
+                    <ThemedText
+                      selectable
+                      style={styles.price}
+                      themeColor="primary"
+                    >
                       {item.product.priceString}
                     </ThemedText>
                   )}
@@ -230,13 +236,13 @@ export function SubscriptionScreen() {
 
         {error ? (
           <View style={[styles.message, { borderColor: theme.border }]}>
-            <ThemedText selectable type="small">{error}</ThemedText>
+            <ThemedText selectable>{error}</ThemedText>
           </View>
         ) : null}
 
         {notice ? (
           <View style={[styles.message, { borderColor: theme.border }]}>
-            <ThemedText selectable type="small">{notice}</ThemedText>
+            <ThemedText selectable>{notice}</ThemedText>
           </View>
         ) : null}
 
@@ -245,12 +251,12 @@ export function SubscriptionScreen() {
             accessibilityRole="button"
             disabled={busyAction !== null}
             onPress={() =>
-              void runAction('restore', async () => {
+              void runAction("restore", async () => {
                 const info = await restore();
                 setNotice(
                   hasEntitlement(info, MANAGER_PRO_ENTITLEMENT)
-                    ? 'Purchase restored. Manager Pro is active.'
-                    : 'No Manager Pro purchase was found for this store account.',
+                    ? "Purchase restored. Manager Pro is active."
+                    : "No Manager Pro purchase was found for this store account.",
                 );
               })
             }
@@ -260,11 +266,12 @@ export function SubscriptionScreen() {
                 borderColor: theme.border,
                 backgroundColor: pressed
                   ? theme.backgroundSelected
-                  : 'transparent',
+                  : "transparent",
               },
-            ]}>
+            ]}
+          >
             <ThemedText style={styles.secondaryButtonText}>
-              {busyAction === 'restore' ? 'Restoring…' : 'Restore purchases'}
+              {busyAction === "restore" ? "Restoring…" : "Restore purchases"}
             </ThemedText>
           </Pressable>
 
@@ -272,15 +279,16 @@ export function SubscriptionScreen() {
             accessibilityRole="button"
             disabled={busyAction !== null}
             onPress={() =>
-              void runAction('refresh', async () => {
+              void runAction("refresh", async () => {
                 await refresh();
-                setNotice('Subscription status refreshed.');
+                setNotice("Subscription status refreshed.");
               })
             }
             style={({ pressed }) => [
               styles.textButton,
               { opacity: pressed ? 0.55 : 1 },
-            ]}>
+            ]}
+          >
             <ThemedText type="smallBold" themeColor="primary">
               Refresh status
             </ThemedText>
@@ -288,7 +296,11 @@ export function SubscriptionScreen() {
         </View>
 
         {customerInfo ? (
-          <ThemedText selectable style={styles.customerId} themeColor="textSecondary">
+          <ThemedText
+            selectable
+            style={styles.customerId}
+            themeColor="textSecondary"
+          >
             Customer: {customerInfo.originalAppUserId}
           </ThemedText>
         ) : null}
@@ -298,113 +310,112 @@ export function SubscriptionScreen() {
 }
 
 function getProductCadence(productId: string) {
-  if (productId === REVENUECAT_PRODUCT_IDS.lifetime) return 'One-time purchase';
-  if (productId === REVENUECAT_PRODUCT_IDS.yearly) return 'Billed once a year';
-  return 'Billed monthly';
+  if (productId === REVENUECAT_PRODUCT_IDS.yearly) return "Billed once a year";
+  return "Billed monthly";
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
     new Date(value),
   );
 }
 
 const styles = StyleSheet.create({
   scrollContent: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.six,
   },
-  content: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.four },
+  content: { width: "100%", maxWidth: MaxContentWidth, gap: Spacing.four },
   intro: { gap: Spacing.two },
   eyebrow: {
     fontSize: FontSize.label,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1.5,
   },
   title: {
     fontSize: FontSize.display,
     lineHeight: 40,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: -1,
   },
   subtitle: { maxWidth: 520, fontSize: FontSize.small, lineHeight: 21 },
   statusCard: {
     minHeight: 84,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: Spacing.three,
     padding: Spacing.three,
     borderWidth: 1,
     borderRadius: Sizing.radius.medium,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   statusCopy: { flex: 1, gap: Spacing.one },
   statusTitle: {
     fontSize: FontSize.bodyLarge,
     lineHeight: 23,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   primaryButton: {
     minHeight: Sizing.control.large,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.three,
     borderRadius: Sizing.radius.pill,
   },
-  primaryButtonText: { fontSize: FontSize.body, fontWeight: '700' },
+  primaryButtonText: { fontSize: FontSize.body, fontWeight: "700" },
   plansSection: { gap: Spacing.three },
   sectionTitle: {
     fontSize: FontSize.headingLarge,
     lineHeight: 27,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   planList: { gap: Spacing.two },
   planRow: {
     minHeight: 76,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
     borderRadius: Sizing.radius.medium,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   planCopy: { flex: 1, gap: Spacing.half },
   planTitle: {
     fontSize: FontSize.bodyLarge,
     lineHeight: 23,
-    fontWeight: '700',
+    fontWeight: "700",
   },
-  price: { fontSize: FontSize.bodyLarge, lineHeight: 23, fontWeight: '700' },
+  price: { fontSize: FontSize.bodyLarge, lineHeight: 23, fontWeight: "700" },
   message: {
     padding: Spacing.three,
     borderWidth: 1,
     borderRadius: Sizing.radius.small,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
-  secondaryActions: { alignItems: 'center', gap: Spacing.three },
+  secondaryActions: { alignItems: "center", gap: Spacing.three },
   secondaryButton: {
-    width: '100%',
+    width: "100%",
     minHeight: Sizing.control.regular,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.three,
     borderWidth: 1,
     borderRadius: Sizing.radius.pill,
   },
-  secondaryButtonText: { fontSize: FontSize.small, fontWeight: '700' },
+  secondaryButtonText: { fontSize: FontSize.small, fontWeight: "700" },
   textButton: {
     minHeight: Sizing.control.compact,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: Spacing.three,
   },
   customerId: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: FontSize.labelSmall,
     lineHeight: 16,
   },

@@ -5,7 +5,6 @@ entitlement, and these product identifiers:
 
 | Product | Store product ID | RevenueCat package |
 | --- | --- | --- |
-| Lifetime | `lifetime` | Lifetime (`$rc_lifetime`) |
 | Yearly | `yearly` | Annual (`$rc_annual`) |
 | Monthly | `monthly` | Monthly (`$rc_monthly`) |
 
@@ -38,27 +37,25 @@ The dashboard is external state and must be configured once:
    `com.flingex.manager`.
 2. For initial development, enable RevenueCat Test Store and use the provided
    `test_lUWKKzTyWNQjyecJqkZfHfenPha` public SDK key.
-3. Create `lifetime` as a non-consumable one-time purchase.
-4. Create `yearly` and `monthly` as auto-renewing subscriptions. Put both in
+3. Create `yearly` and `monthly` as auto-renewing subscriptions. Put both in
    the same subscription group on Apple.
-5. Import those three products into RevenueCat.
-6. Create the entitlement `manager_pro` and attach all three products to it.
-7. Create an offering (for example, `default`) and add:
-   - `lifetime` to the Lifetime package
+4. Import both products into RevenueCat.
+5. Create the entitlement `manager_pro` and attach both products to it.
+6. Create an offering (for example, `default`) and add:
    - `yearly` to the Annual package
    - `monthly` to the Monthly package
-8. Mark the offering as **Current**.
-9. Build and publish a RevenueCat Paywall for the current offering. Include a
+7. Mark the offering as **Current**.
+8. Build and publish a RevenueCat Paywall for the current offering. Include a
    restore action and a close button unless the app intentionally uses a hard
    paywall.
-10. Enable and customize Customer Center. It is shown to customers with an
+9. Enable and customize Customer Center. It is shown to customers with an
     active `manager_pro` entitlement from the Manager Pro screen.
 
 Before production, replace the Test Store key with the public SDK key for each
 store. Add these to local `.env` and to the corresponding EAS build environment:
 
 ```dotenv
-EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=appl_your_public_sdk_key
+EXPO_PUBLIC_RC_APPLE_API_KEY=appl_your_public_sdk_key
 EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=goog_your_public_sdk_key
 EXPO_PUBLIC_REVENUECAT_WEB_API_KEY=rcb_your_public_sdk_key
 ```
@@ -132,7 +129,8 @@ authorization.
 
 ## 5. Test checklist
 
-- The current offering returns all three products with localized prices.
+- The current offering returns the yearly and monthly products with localized
+  prices.
 - Buying each product activates `manager_pro` in `CustomerInfo`.
 - Cancelling a purchase leaves the user in the free state without an error.
 - Restore is initiated only after tapping **Restore purchases**.

@@ -1,4 +1,3 @@
-import { fetch } from 'expo/fetch';
 import type { File } from 'expo-file-system';
 
 import type { TranscriptionResponsePayload } from '@/services/api/transcription-contract';
@@ -36,6 +35,7 @@ export async function requestTranscription({
   signal?.addEventListener('abort', abortFromCaller, { once: true });
 
   try {
+    const audioBytes = await audioFile.bytes();
     const response = await fetch(TRANSCRIPTION_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -44,7 +44,7 @@ export async function requestTranscription({
           ? { 'X-Rehearsal-Prompt': encodeURIComponent(prompt.trim()) }
           : {}),
       },
-      body: audioFile,
+      body: audioBytes,
       signal: controller.signal,
     });
 

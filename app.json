@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "manager",
+    "name": "The Talk Ahead",
+    "description": "Private voice rehearsal for difficult workplace conversations.",
     "slug": "manager",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,10 +9,11 @@
     "scheme": "manager",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/manager.icon",
       "bundleIdentifier": "com.flingex.manager",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "The Talk Ahead does not access your location. This description is included because the bundled notification framework references location services."
       }
     },
     "android": {
@@ -47,9 +49,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#F5F1E9",
+          "image": "./assets/manager.icon/Assets/Codex-Bild 24. Aug. 2026, 23_21_27.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#181116",
+            "image": "./assets/manager.icon/Assets/Codex-Bild 24. Aug. 2026, 23_21_27.png"
+          }
         }
       ],
       [

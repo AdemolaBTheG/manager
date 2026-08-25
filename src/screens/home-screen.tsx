@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { AnimatedHeroGradient } from "@/components/animated-hero-gradient";
 import { Carousel, type CarouselCard } from "@/components/carousel";
+import { SessionListRow } from "@/components/session-list-row";
 import { ThemedText } from "@/components/themed-text";
 import {
   FontSize,
@@ -16,10 +17,7 @@ import {
 import { scenarios } from "@/data/scenarios";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
-import {
-  getSessionStatusLabel,
-  type SessionSummary,
-} from "@/services/query/session-detail";
+import type { SessionSummary } from "@/services/query/session-detail";
 
 const guidedPracticeCards: readonly CarouselCard[] = scenarios.map(
   (scenario) => ({
@@ -27,7 +25,7 @@ const guidedPracticeCards: readonly CarouselCard[] = scenarios.map(
     category: scenario.category,
     eyebrow: scenario.eyebrow,
     href: {
-      pathname: "/scenarios/[scenarioId]",
+      pathname: "/(app)/(scenarios)/[scenarioId]",
       params: { scenarioId: scenario.id },
     },
     title: scenario.title,
@@ -72,10 +70,7 @@ export function HomeScreen({
           accessibilityHint="Start preparing a real conversation"
           accessibilityRole="button"
           onPress={() => router.push("/situations/new")}
-          style={({ pressed }) => [
-            styles.primaryCard,
-            { backgroundColor: pressed ? theme.primaryPressed : theme.primary },
-          ]}
+          style={({ pressed }) => [styles.primaryCard]}
         >
           {({ pressed }) => (
             <>
@@ -147,27 +142,46 @@ export function HomeScreen({
           <Carousel data={guidedPracticeCards} />
         </View>
 
-        {recentSessions.length > 0 || sessionsUnavailable ? (
+        {sessionLibrary.length > 0 || sessionsUnavailable ? (
           <View style={styles.recentSection}>
-            <ThemedText selectable style={styles.sectionTitle}>
-              Recent sessions
-            </ThemedText>
+            <View style={styles.recentHeader}>
+              <ThemedText selectable style={styles.sectionTitle}>
+                Recent sessions
+              </ThemedText>
+              {sessionLibrary.length > 0 ? (
+                <Link asChild href="/session">
+                  <PressableOpacity
+                    accessibilityHint="Opens every saved practice session"
+                    accessibilityLabel="See all sessions"
+                    accessibilityRole="link"
+                    hitSlop={8}
+                    style={styles.seeAllButton}
+                  >
+                    <SymbolView
+                      accessible={false}
+                      name={{
+                        ios: "chevron.forward",
+                        android: "chevron_right",
+                        web: "chevron_right",
+                      }}
+                      size={Sizing.icon.medium - 4}
+                      weight={"semibold"}
+                      tintColor={theme.textSecondary}
+                    />
+                  </PressableOpacity>
+                </Link>
+              ) : null}
+            </View>
             {recentSessions.length > 0 ? (
               <View>
                 {recentSessions.map((summary, index) => (
-                  <RecentSessionRow
+                  <SessionListRow
                     color={
                       PracticeCategoryColors[colorScheme][
                         summary.scenario.category
                       ]
                     }
                     key={summary.session.id}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/session/[sessionId]",
-                        params: { sessionId: summary.session.id },
-                      })
-                    }
                     showSeparator={index > 0}
                     summary={summary}
                   />
@@ -264,69 +278,6 @@ function ContinueSessionRail({
   );
 }
 
-function RecentSessionRow({
-  color,
-  onPress,
-  showSeparator,
-  summary,
-}: {
-  readonly color: string;
-  readonly onPress: () => void;
-  readonly showSeparator: boolean;
-  readonly summary: SessionSummary;
-}) {
-  const theme = useTheme();
-
-  return (
-    <PressableOpacity
-      accessibilityHint="Opens this saved session"
-      accessibilityLabel={`${summary.scenario.presentation.shortTitle}. ${summary.scenario.relationship.counterpartName}. ${getSessionStatusLabel(summary.session)}. ${formatRecentDate(summary.session.updatedAt)}.`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={styles.recentRow}
-    >
-      {showSeparator ? (
-        <View
-          accessible={false}
-          style={[styles.recentSeparator, { backgroundColor: theme.border }]}
-        />
-      ) : null}
-      <SessionAvatar
-        color={color}
-        name={summary.scenario.relationship.counterpartName}
-      />
-      <View style={styles.recentCopy}>
-        <ThemedText accessible={false} style={styles.recentTitle}>
-          {summary.scenario.presentation.shortTitle}
-        </ThemedText>
-        <ThemedText
-          accessible={false}
-          style={styles.recentContext}
-          themeColor="textSecondary"
-        >
-          <ThemedText style={styles.recentIdentity} themeColor="textSecondary">
-            {summary.scenario.relationship.counterpartName}
-          </ThemedText>{" "}
-          ·{" "}
-          <ThemedText style={styles.recentStatus} themeColor="textSecondary">
-            {getSessionStatusLabel(summary.session)}
-          </ThemedText>{" "}
-          · {formatRecentDate(summary.session.updatedAt)}
-        </ThemedText>
-      </View>
-      <SymbolView
-        name={{
-          ios: "chevron.right",
-          android: "chevron_right",
-          web: "chevron_right",
-        }}
-        size={Sizing.icon.small}
-        tintColor={theme.textSecondary}
-      />
-    </PressableOpacity>
-  );
-}
-
 function SessionAvatar({
   color,
   name,
@@ -383,7 +334,7 @@ function openSessionAction(
       return;
     case "scenario":
       router.push({
-        pathname: "/scenarios/[scenarioId]",
+        pathname: "/(app)/(scenarios)/[scenarioId]",
         params: { scenarioId: summary.session.scenarioId },
       });
       return;
@@ -399,35 +350,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
-}
-
-function formatRecentDate(timestamp: string) {
-  const date = new Date(timestamp);
-  const today = new Date();
-  const startOfToday = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  );
-  const startOfDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-  const dayDifference = Math.round(
-    (startOfToday.getTime() - startOfDate.getTime()) / 86_400_000,
-  );
-
-  if (dayDifference === 0) {
-    return "Today";
-  }
-  if (dayDifference === 1) {
-    return "Yesterday";
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-  }).format(date);
 }
 
 const styles = StyleSheet.create({
@@ -562,40 +484,21 @@ const styles = StyleSheet.create({
   recentSection: {
     gap: Spacing.two,
   },
-  recentRow: {
-    minHeight: 68,
+  recentHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.three,
-    paddingVertical: Spacing.two,
-    position: "relative",
+    justifyContent: "space-between",
   },
-  recentSeparator: {
-    position: "absolute",
-    top: 0,
-    left: Sizing.avatar.small + Spacing.three,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
+  seeAllButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: Spacing.one,
+    minHeight: Sizing.control.compact,
+    paddingLeft: Spacing.three,
   },
-  recentCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: Spacing.half,
-  },
-  recentTitle: {
-    fontSize: FontSize.bodyLarge,
-    fontWeight: "600",
-  },
-  recentContext: {
-    fontSize: FontSize.caption,
-  },
-  recentIdentity: {
-    fontSize: FontSize.caption,
-    fontWeight: "500",
-  },
-  recentStatus: {
-    fontSize: FontSize.caption,
-    fontWeight: "600",
+  seeAllText: {
+    fontSize: FontSize.small,
+    fontWeight: "700",
   },
   sessionAvatar: {
     width: Sizing.avatar.small,

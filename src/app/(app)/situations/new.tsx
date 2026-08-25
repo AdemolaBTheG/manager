@@ -20,6 +20,7 @@ import {
   SituationApiError,
   useSituationNormalizationMutation,
 } from '@/services/query/situation-mutations';
+import { posthog } from '@/services/analytics/posthog';
 import { sessionRepository } from '@/services/storage';
 
 export default function NewSituationRoute() {
@@ -54,6 +55,10 @@ export default function NewSituationRoute() {
         resistanceMoveOrder: scenario.resistanceMoves.map((move) => move.id),
       });
       await sessionRepository.transitionSession(session.id, 'confirmed');
+      posthog?.capture('private_practice_session_started', {
+        conversation_type: situation.conversationType,
+        relationship_type: situation.relationshipType,
+      });
       router.replace({
         pathname: '/session/[sessionId]/readiness',
         params: { sessionId: session.id },
@@ -112,7 +117,14 @@ export default function NewSituationRoute() {
               ? 'We couldn’t prepare this simulation. Please try again.'
               : null
         }
-        onNormalize={(input) => normalization.mutateAsync(input)}
+        onNormalize={async (input) => {
+          const result = await normalization.mutateAsync(input);
+          posthog?.capture('private_situation_normalized', {
+            conversation_type: input.conversationType,
+            relationship_type: input.relationshipType,
+          });
+          return result;
+        }}
         onStart={handleStart}
         onStepChange={setCurrentStep}
       />

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 
 import type { ReadinessValue } from "@/domain/session";
+import { useSemanticHaptics } from "@/hooks/use-semantic-haptics";
 import {
   PostReadinessScreen,
   PostReadinessStatusScreen,
@@ -20,6 +21,7 @@ export default function PostReadinessRoute() {
   const isDevPreview = __DEV__ && preview === "debrief";
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { playSuccess } = useSemanticHaptics();
   const statusQuery = useQuery({
     enabled: Boolean(sessionId) && !isDevPreview,
     queryKey: [
@@ -42,6 +44,7 @@ export default function PostReadinessRoute() {
       await queryClient.invalidateQueries({
         queryKey: ["rehearsal", "plan", sessionId],
       });
+      playSuccess();
       router.dismiss();
     },
   });
@@ -62,6 +65,7 @@ export default function PostReadinessRoute() {
                     }
                   : current,
             );
+            playSuccess();
             router.dismiss();
           }}
         />

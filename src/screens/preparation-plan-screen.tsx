@@ -1,13 +1,27 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useIsFocused } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { PressableScale } from "pressto";
-import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  LayoutAnimation,
+  type LayoutAnimationConfig,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
+  Easing,
+  Extrapolation,
   FadeIn,
-  FadeOut,
-  LinearTransition,
+  interpolate,
   ReduceMotion,
+  type SharedValue,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -27,15 +41,67 @@ type PreparationPlanScreenProps = {
   preparationCard: PreparationCard;
 };
 
-const DISCLOSURE_TRANSITION = LinearTransition.duration(180).reduceMotion(
-  ReduceMotion.System,
-);
-const DISCLOSURE_ENTERING = FadeIn.duration(160).reduceMotion(
-  ReduceMotion.System,
-);
-const DISCLOSURE_EXITING = FadeOut.duration(120).reduceMotion(
-  ReduceMotion.System,
-);
+const CONTENT_LAYOUT_ANIMATION = {
+  duration: 220,
+  create: {
+    duration: 180,
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.easeOut,
+  },
+  update: {
+    duration: 220,
+    type: LayoutAnimation.Types.easeOut,
+  },
+  delete: {
+    duration: 120,
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.easeOut,
+  },
+} satisfies LayoutAnimationConfig;
+const COMPLETION_LAYOUT_ANIMATION = {
+  duration: 220,
+  update: {
+    duration: 220,
+    type: LayoutAnimation.Types.easeOut,
+  },
+} satisfies LayoutAnimationConfig;
+const REDUCED_MOTION_LAYOUT_ANIMATION = {
+  duration: 140,
+  create: {
+    duration: 140,
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.linear,
+  },
+  update: {
+    duration: 1,
+    type: LayoutAnimation.Types.linear,
+  },
+  delete: {
+    duration: 100,
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.linear,
+  },
+} satisfies LayoutAnimationConfig;
+const REDUCED_MOTION_COMPLETION_LAYOUT_ANIMATION = {
+  duration: 1,
+  update: {
+    duration: 1,
+    type: LayoutAnimation.Types.linear,
+  },
+} satisfies LayoutAnimationConfig;
+const READINESS_REVEAL_DURATION = 280;
+const READINESS_REVEAL_REDUCED_MOTION_DURATION = 140;
+const READINESS_REVEAL_EASING = Easing.bezier(0.23, 1, 0.32, 1);
+const READINESS_SECTION_ENTERING = FadeIn.duration(140)
+  .easing(READINESS_REVEAL_EASING)
+  .reduceMotion(ReduceMotion.Never);
+const READINESS_VIEWPORT_BOTTOM_CLEARANCE = 100;
+const READINESS_VISIBLE_HEIGHT = 100;
+const READINESS_NOW_OFFSET = 0.18;
+const READINESS_SEGMENT_STAGGER = 0.07;
+const READINESS_SEGMENT_REVEAL_SPAN = 0.34;
+const READINESS_VALUE_REVEAL_DELAY = 0.28;
+const READINESS_VALUE_REVEAL_SPAN = 0.18;
 
 export function PreparationPlanScreen({
   afterRating,
@@ -46,16 +112,101 @@ export function PreparationPlanScreen({
   preparationCard,
 }: PreparationPlanScreenProps) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
   const [isPushbackExpanded, setIsPushbackExpanded] = useState(false);
-  const isComplete = afterRating !== null;
+  const [displayedAfterRating, setDisplayedAfterRating] = useState(afterRating);
+  const scrollOffset = useSharedValue(0);
+  const scrollViewportHeight = useSharedValue(0);
+  const contentTop = useSharedValue(-1);
+  const comparisonTop = useSharedValue(-1);
+  const comparisonHeight = useSharedValue(0);
+  const readinessRevealProgress = useSharedValue(0);
+  const hasRevealedReadiness = useSharedValue(false);
+  const isComplete = displayedAfterRating !== null;
   const visibleEvidence = evidenceAnchors.slice(0, 2);
   const visibleCuriosity = preparationCard.stayCuriousAbout.slice(0, 2);
   const visiblePushback = preparationCard.likelyPushback.slice(0, 3);
+  const handleScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollOffset.set(event.contentOffset.y);
+    },
+  });
+
+  useEffect(() => {
+    if (!isFocused || displayedAfterRating === afterRating) {
+      return;
+    }
+
+    const animationFrame = requestAnimationFrame(() => {
+      const completionStateChanged =
+        (displayedAfterRating === null) !== (afterRating === null);
+      if (completionStateChanged) {
+        LayoutAnimation.configureNext(
+          reduceMotion
+            ? REDUCED_MOTION_COMPLETION_LAYOUT_ANIMATION
+            : COMPLETION_LAYOUT_ANIMATION,
+        );
+      }
+      setDisplayedAfterRating(afterRating);
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [afterRating, displayedAfterRating, isFocused, reduceMotion]);
+
+  const handleTogglePushback = () => {
+    LayoutAnimation.configureNext(
+      reduceMotion
+        ? REDUCED_MOTION_LAYOUT_ANIMATION
+        : CONTENT_LAYOUT_ANIMATION,
+    );
+    setIsPushbackExpanded((current) => !current);
+  };
+
+  useAnimatedReaction(
+    () => {
+      const viewportHeight = scrollViewportHeight.get();
+      const sectionHeight = comparisonHeight.get();
+      const sectionTop =
+        contentTop.get() + comparisonTop.get() - scrollOffset.get();
+      const sectionBottom = sectionTop + sectionHeight;
+      const viewportBottom =
+        viewportHeight - READINESS_VIEWPORT_BOTTOM_CLEARANCE;
+      const visibleHeight =
+        Math.min(sectionBottom, viewportBottom) - Math.max(sectionTop, 0);
+
+      return (
+        contentTop.get() >= 0 &&
+        comparisonTop.get() >= 0 &&
+        viewportHeight > 0 &&
+        sectionHeight > 0 &&
+        visibleHeight >= Math.min(READINESS_VISIBLE_HEIGHT, sectionHeight)
+      );
+    },
+    (isMeaningfullyVisible) => {
+      if (!isMeaningfullyVisible || hasRevealedReadiness.get()) {
+        return;
+      }
+
+      hasRevealedReadiness.set(true);
+      readinessRevealProgress.set(
+        withTiming(1, {
+          duration: reduceMotion
+            ? READINESS_REVEAL_REDUCED_MOTION_DURATION
+            : READINESS_REVEAL_DURATION,
+          easing: READINESS_REVEAL_EASING,
+          // Reduced motion still receives a short opacity-only confirmation.
+          reduceMotion: ReduceMotion.Never,
+        }),
+      );
+    },
+    [reduceMotion],
+  );
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
-      <ScrollView
+      <Animated.ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.scrollContent,
@@ -66,14 +217,72 @@ export function PreparationPlanScreen({
               Spacing.five,
           },
         ]}
+        onLayout={(event) => {
+          scrollViewportHeight.set(event.nativeEvent.layout.height);
+        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         style={styles.scrollView}
       >
-        <View style={styles.content}>
+        <View
+          onLayout={(event) => {
+            contentTop.set(event.nativeEvent.layout.y);
+          }}
+          style={styles.content}
+        >
           <View style={styles.purposeSection}>
             <ThemedText selectable style={styles.purposeText}>
               {preparationCard.purpose}
             </ThemedText>
           </View>
+
+          <View style={[styles.askBlock, { backgroundColor: theme.primary }]}>
+            <ThemedText
+              selectable
+              style={[styles.askLabel, { color: theme.onPrimary }]}
+            >
+              YOUR ASK
+            </ThemedText>
+            <ThemedText
+              selectable
+              style={[styles.askText, { color: theme.onPrimary }]}
+            >
+              {preparationCard.requestOrBoundary}
+            </ThemedText>
+          </View>
+
+          {displayedAfterRating !== null ? (
+            <Animated.View
+              entering={READINESS_SECTION_ENTERING}
+              onLayout={(event) => {
+                comparisonTop.set(event.nativeEvent.layout.y);
+                comparisonHeight.set(event.nativeEvent.layout.height);
+              }}
+              style={styles.comparison}
+            >
+              <SectionLabel>How ready you feel</SectionLabel>
+              <View style={styles.comparisonRows}>
+                <ReadinessSegmentRow
+                  activeColor={theme.textSecondary}
+                  inactiveColor={theme.backgroundSelected}
+                  label="Before"
+                  reduceMotion={reduceMotion}
+                  revealProgress={readinessRevealProgress}
+                  revealStart={0}
+                  value={beforeRating}
+                />
+                <ReadinessSegmentRow
+                  activeColor={theme.primary}
+                  inactiveColor={theme.backgroundSelected}
+                  label="Now"
+                  reduceMotion={reduceMotion}
+                  revealProgress={readinessRevealProgress}
+                  revealStart={READINESS_NOW_OFFSET}
+                  value={displayedAfterRating}
+                />
+              </View>
+            </Animated.View>
+          ) : null}
 
           {visibleEvidence.length > 0 ? (
             <View style={styles.section}>
@@ -90,21 +299,6 @@ export function PreparationPlanScreen({
               </View>
             </View>
           ) : null}
-
-          <View style={[styles.askBlock, { backgroundColor: theme.primary }]}>
-            <ThemedText
-              selectable
-              style={[styles.askLabel, { color: theme.onPrimary }]}
-            >
-              YOUR ASK
-            </ThemedText>
-            <ThemedText
-              selectable
-              style={[styles.askText, { color: theme.onPrimary }]}
-            >
-              {preparationCard.requestOrBoundary}
-            </ThemedText>
-          </View>
 
           {visibleCuriosity.length > 0 ? (
             <View style={styles.section}>
@@ -137,8 +331,7 @@ export function PreparationPlanScreen({
           ) : null}
 
           {visiblePushback.length > 0 ? (
-            <Animated.View
-              layout={DISCLOSURE_TRANSITION}
+            <View
               style={[
                 styles.pushbackCard,
                 { backgroundColor: theme.backgroundElement },
@@ -148,7 +341,7 @@ export function PreparationPlanScreen({
                 accessibilityHint="Shows or hides the reactions to prepare for"
                 accessibilityRole="button"
                 accessibilityState={{ expanded: isPushbackExpanded }}
-                onPress={() => setIsPushbackExpanded((current) => !current)}
+                onPress={handleTogglePushback}
                 style={styles.pushbackDisclosure}
               >
                 <View style={styles.pushbackHeading}>
@@ -177,11 +370,7 @@ export function PreparationPlanScreen({
               </PressableScale>
 
               {isPushbackExpanded ? (
-                <Animated.View
-                  entering={DISCLOSURE_ENTERING}
-                  exiting={DISCLOSURE_EXITING}
-                  style={styles.pushbackList}
-                >
+                <View style={styles.pushbackList}>
                   {visiblePushback.map((item) => (
                     <View key={item} style={styles.pushbackRow}>
                       <SymbolView
@@ -199,37 +388,12 @@ export function PreparationPlanScreen({
                       </ThemedText>
                     </View>
                   ))}
-                </Animated.View>
+                </View>
               ) : null}
-            </Animated.View>
-          ) : null}
-
-          {isComplete ? (
-            <Animated.View
-              entering={DISCLOSURE_ENTERING}
-              exiting={DISCLOSURE_EXITING}
-              layout={DISCLOSURE_TRANSITION}
-              style={styles.comparison}
-            >
-              <SectionLabel>How ready you feel</SectionLabel>
-              <View style={styles.comparisonRows}>
-                <ReadinessSegmentRow
-                  activeColor={theme.textSecondary}
-                  inactiveColor={theme.backgroundSelected}
-                  label="Before"
-                  value={beforeRating}
-                />
-                <ReadinessSegmentRow
-                  activeColor={theme.primary}
-                  inactiveColor={theme.backgroundSelected}
-                  label="Now"
-                  value={afterRating}
-                />
-              </View>
-            </Animated.View>
+            </View>
           ) : null}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View
         pointerEvents="box-none"
@@ -247,16 +411,11 @@ export function PreparationPlanScreen({
         />
         <PressableScale
           accessibilityHint={
-            isComplete
-              ? "Returns to Home"
-              : "Opens a short readiness check"
+            isComplete ? "Returns to Home" : "Opens a short readiness check"
           }
           accessibilityRole="button"
           onPress={isComplete ? onDone : onRateReadiness}
-          style={[
-            styles.primaryButton,
-            { backgroundColor: theme.primary },
-          ]}
+          style={[styles.primaryButton, { backgroundColor: theme.primary }]}
         >
           <ThemedText style={styles.primaryButtonText} themeColor="onPrimary">
             {isComplete ? "Done" : "Check my readiness"}
@@ -339,11 +498,17 @@ function ReadinessSegmentRow({
   activeColor,
   inactiveColor,
   label,
+  reduceMotion,
+  revealProgress,
+  revealStart,
   value,
 }: {
   activeColor: string;
   inactiveColor: string;
   label: string;
+  reduceMotion: boolean;
+  revealProgress: SharedValue<number>;
+  revealStart: number;
   value: ReadinessValue;
 }) {
   return (
@@ -361,25 +526,129 @@ function ReadinessSegmentRow({
       </ThemedText>
       <View style={styles.readinessSegments}>
         {Array.from({ length: 5 }, (_, index) => (
-          <View
+          <ReadinessSegment
+            active={index < value}
+            activeColor={activeColor}
+            inactiveColor={inactiveColor}
+            index={index}
             key={`${label}-${index}`}
-            style={[
-              styles.readinessSegment,
-              {
-                backgroundColor:
-                  index < value ? activeColor : inactiveColor,
-              },
-            ]}
+            reduceMotion={reduceMotion}
+            revealProgress={revealProgress}
+            revealStart={revealStart}
           />
         ))}
       </View>
+      <ReadinessValueReveal
+        activeColor={activeColor}
+        revealProgress={revealProgress}
+        revealStart={revealStart}
+        value={value}
+      />
+    </View>
+  );
+}
+
+function ReadinessSegment({
+  active,
+  activeColor,
+  inactiveColor,
+  index,
+  reduceMotion,
+  revealProgress,
+  revealStart,
+}: {
+  active: boolean;
+  activeColor: string;
+  inactiveColor: string;
+  index: number;
+  reduceMotion: boolean;
+  revealProgress: SharedValue<number>;
+  revealStart: number;
+}) {
+  const segmentStart = revealStart + index * READINESS_SEGMENT_STAGGER;
+  const segmentEnd = segmentStart + READINESS_SEGMENT_REVEAL_SPAN;
+  const activeStyle = useAnimatedStyle(() => {
+    const progress = interpolate(
+      revealProgress.get(),
+      [segmentStart, segmentEnd],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      opacity: progress,
+      transform: [
+        {
+          scaleX: reduceMotion
+            ? 1
+            : interpolate(
+                progress,
+                [0, 1],
+                [0.95, 1],
+                Extrapolation.CLAMP,
+              ),
+        },
+      ],
+    };
+  }, [reduceMotion, segmentEnd, segmentStart]);
+
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      style={[styles.readinessSegment, { backgroundColor: inactiveColor }]}
+    >
+      {active ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.readinessSegmentFill,
+            { backgroundColor: activeColor },
+            activeStyle,
+          ]}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function ReadinessValueReveal({
+  activeColor,
+  revealProgress,
+  revealStart,
+  value,
+}: {
+  activeColor: string;
+  revealProgress: SharedValue<number>;
+  revealStart: number;
+  value: ReadinessValue;
+}) {
+  const valueStart =
+    revealStart +
+    (value - 1) * READINESS_SEGMENT_STAGGER +
+    READINESS_VALUE_REVEAL_DELAY;
+  const valueEnd = valueStart + READINESS_VALUE_REVEAL_SPAN;
+  const valueStyle = useAnimatedStyle(
+    () => ({
+      opacity: interpolate(
+        revealProgress.get(),
+        [valueStart, valueEnd],
+        [0, 1],
+        Extrapolation.CLAMP,
+      ),
+    }),
+    [valueEnd, valueStart],
+  );
+
+  return (
+    <Animated.View style={[styles.readinessRowValueContainer, valueStyle]}>
       <ThemedText
         selectable
         style={[styles.readinessRowValue, { color: activeColor }]}
       >
         {value}
       </ThemedText>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -457,12 +726,12 @@ const styles = StyleSheet.create({
   },
   askLabel: {
     fontSize: FontSize.label,
-    fontWeight: "700",
+    fontWeight: "600",
     opacity: 0.72,
   },
   askText: {
     fontSize: FontSize.heading,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   curiosityHeading: {
     alignItems: "center",
@@ -535,12 +804,23 @@ const styles = StyleSheet.create({
     borderRadius: Sizing.radius.pill,
     flex: 1,
     height: 9,
+    overflow: "hidden",
+  },
+  readinessSegmentFill: {
+    bottom: 0,
+    borderRadius: Sizing.radius.pill,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  readinessRowValueContainer: {
+    minWidth: 16,
   },
   readinessRowValue: {
     fontSize: FontSize.body,
     fontVariant: ["tabular-nums"],
     fontWeight: "700",
-    minWidth: 16,
     textAlign: "right",
   },
   floatingAction: {

@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import {
   type ReactNode,
   useCallback,
@@ -8,6 +7,7 @@ import {
 } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   Extrapolation,
   interpolate,
@@ -24,8 +24,13 @@ import {
 } from "@/components/conversation-transition-context";
 import type { ConversationTransitionRequest } from "@/components/conversation-transition.types";
 import { DebriefTransitionField } from "@/components/debrief-atmosphere";
+import { useConversationTransitionHaptics } from "@/hooks/use-conversation-transition-haptics";
 
 const TRANSITION_EASING = Easing.bezier(0.16, 1, 0.3, 1);
+const OUTGOING_DURATION = 500;
+const INCOMING_DURATION = 560;
+const REDUCED_OUTGOING_DURATION = 100;
+const REDUCED_INCOMING_DURATION = 140;
 
 export { useConversationTransition };
 
@@ -35,8 +40,25 @@ export function ConversationTransitionProvider({
   children: ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
+  const outgoingDuration = reduceMotion
+    ? REDUCED_OUTGOING_DURATION
+    : OUTGOING_DURATION;
+  const incomingDuration = reduceMotion
+    ? REDUCED_INCOMING_DURATION
+    : INCOMING_DURATION;
+  const {
+    playIncoming: playTransitionIncomingHaptic,
+    playOutgoing: playTransitionOutgoingHaptic,
+    playSettle: playTransitionSettleHaptic,
+    stop: stopTransitionHaptic,
+  } = useConversationTransitionHaptics({
+    incomingDurationMs: incomingDuration,
+    outgoingDurationMs: outgoingDuration,
+    reduceMotion,
+  });
   const mountedRef = useRef(true);
   const runningRef = useRef(false);
+  const transitionGenerationRef = useRef(0);
   const progress = useSharedValue(0);
   const direction = useSharedValue(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -44,10 +66,16 @@ export function ConversationTransitionProvider({
     useState<ConversationTransitionRequest | null>(null);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
+      transitionGenerationRef.current += 1;
+      runningRef.current = false;
+      cancelAnimation(progress);
+      stopTransitionHaptic();
     };
-  }, []);
+  }, [progress, stopTransitionHaptic]);
 
   const startConversationTransition = useCallback(
     async (request: ConversationTransitionRequest) => {
@@ -55,57 +83,74 @@ export function ConversationTransitionProvider({
         return;
       }
 
+      const generation = transitionGenerationRef.current + 1;
+      transitionGenerationRef.current = generation;
       runningRef.current = true;
       setIsTransitioning(true);
       setScene(request);
       direction.set(request.direction === "into-debrief" ? 1 : -1);
       progress.set(0);
 
-      if (process.env.EXPO_OS === "ios") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const isCurrent = () =>
+        mountedRef.current &&
+        transitionGenerationRef.current === generation;
+
+      try {
+        await nextFrame();
+        if (!isCurrent()) return;
+
+        playTransitionOutgoingHaptic();
+        progress.set(
+          withTiming(0.5, {
+            duration: outgoingDuration,
+            easing: TRANSITION_EASING,
+            reduceMotion: ReduceMotion.Never,
+          }),
+        );
+        await delay(outgoingDuration);
+        if (!isCurrent()) return;
+
+        request.navigate();
+        await nextFrame();
+        await nextFrame();
+        if (!isCurrent()) return;
+
+        playTransitionIncomingHaptic();
+        progress.set(
+          withTiming(1, {
+            duration: incomingDuration,
+            easing: TRANSITION_EASING,
+            reduceMotion: ReduceMotion.Never,
+          }),
+        );
+        await delay(incomingDuration);
+        if (!isCurrent()) return;
+
+        playTransitionSettleHaptic();
+      } catch {
+        if (isCurrent()) {
+          cancelAnimation(progress);
+          progress.set(0);
+        }
+        stopTransitionHaptic();
+      } finally {
+        if (isCurrent()) {
+          setScene(null);
+          setIsTransitioning(false);
+          runningRef.current = false;
+        }
       }
-
-      await nextFrame();
-      const outgoingDuration = reduceMotion ? 100 : 500;
-      const incomingDuration = reduceMotion ? 140 : 560;
-
-      progress.set(
-        withTiming(0.5, {
-          duration: outgoingDuration,
-          easing: TRANSITION_EASING,
-          reduceMotion: ReduceMotion.Never,
-        }),
-      );
-      await delay(outgoingDuration);
-
-      if (!mountedRef.current) {
-        runningRef.current = false;
-        return;
-      }
-
-      request.navigate();
-      if (process.env.EXPO_OS === "ios") {
-        void Haptics.selectionAsync();
-      }
-      await nextFrame();
-      await nextFrame();
-
-      progress.set(
-        withTiming(1, {
-          duration: incomingDuration,
-          easing: TRANSITION_EASING,
-          reduceMotion: ReduceMotion.Never,
-        }),
-      );
-      await delay(incomingDuration);
-
-      if (mountedRef.current) {
-        setScene(null);
-        setIsTransitioning(false);
-      }
-      runningRef.current = false;
     },
-    [direction, progress, reduceMotion],
+    [
+      direction,
+      incomingDuration,
+      outgoingDuration,
+      playTransitionIncomingHaptic,
+      playTransitionOutgoingHaptic,
+      playTransitionSettleHaptic,
+      progress,
+      stopTransitionHaptic,
+    ],
   );
 
   const contentStyle = useAnimatedStyle(() => {

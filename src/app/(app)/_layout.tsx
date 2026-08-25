@@ -36,10 +36,19 @@ export default function AppStackLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen name="scenarios" options={{ headerShown: false }} />
       <Stack.Screen
-        name="session/[sessionId]"
-        options={{ headerShown: false }}
+        name="(settings)"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen name="(scenarios)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="session"
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+        }}
       />
       <Stack.Screen
         name="(session-sheets)/session/[sessionId]/readiness"

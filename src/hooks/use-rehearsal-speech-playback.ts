@@ -32,7 +32,7 @@ export type RehearsalSpeechPlaybackState =
   | 'playing'
   | 'error';
 
-type PlaybackFinishReason = 'done' | 'error' | 'stopped';
+export type PlaybackFinishReason = 'done' | 'error' | 'stopped';
 
 const WORD_HIGHLIGHT_TRANSITION = {
   duration: 110,
