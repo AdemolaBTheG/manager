@@ -59,7 +59,6 @@
     "react-native-fast-confetti": "^1.1.2",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.9",
-    "react-native-mmkv": "^4.3.2",
     "react-native-nitro-modules": "^0.33.9",
     "react-native-onesignal": "^5.5.6",
     "react-native-pulsar": "^1.7.0",
