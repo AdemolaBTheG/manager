@@ -3,7 +3,7 @@
     "name": "The Talk Ahead",
     "description": "Private voice rehearsal for difficult workplace conversations.",
     "slug": "manager",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "manager",
@@ -40,6 +40,7 @@
       [
         "expo-router",
         {
+          "origin": "https://the-talk-ahead.expo.app",
           "headers": {
             "Cross-Origin-Embedder-Policy": "credentialless",
             "Cross-Origin-Opener-Policy": "same-origin"
